@@ -2,9 +2,204 @@
 title: "Homework3"
 format: html
 editor: visual
+editor_options: 
+  chunk_output_type: console
 ---
+
+# Task 1: Conceptual Questions
+
+1.  If the working directory is `myfolder/homework/`, the relative path to access `myfolder/MyData.csv` is `../MyData.csv`. The `..` moves up one directory from the `homework` folder to the `myfolder` folder.
+
+2.  What are the major benefits of using R projects: The working directory automatically sets to the project root folder. Relative paths like `myfolder/MyData.csv` work for everyone who want to access them in the current working directory of their R project. RStudio reopens tabs, history, and cursor locations right where you left off for that specific project. You can move the entire project folder to another computer or share it via GitHub, and code runs without changing file paths.
+
+3.  Git is a version control system that tracks changes made to files and allows users to keep different versions of their work. GitHub is an online platform that hosts Git repositories and makes it easy to store, share, and collaborate on projects.
+
+4.  Two main differences between a tibble and a data.frame are:
+
+    - Tibbles print only the rows and columns that fit on the screen instead of the entire data set.
+
+    - Tibbles are more strict about how they handle variables and do not automatically change things such as variable names or data types in the way traditional data frames might.
+
+    - 
+
+      # Task 2: Reading Delimited Data
+
+## Question 1: Glass Data
 
 ```{r}
 #| echo: false
+library(tidyverse)
+
+glass <- read_csv(
+  "https://www4.stat.ncsu.edu/~online/datasets/glass.data",
+  col_names = c(
+    "ID", "RI", "Na", "Mg", "Al", "Si",
+    "K", "Ca", "Ba", "Fe", "TypeGlass"
+  )
+)
+glass
+```
+
+## Question 2: Yeast Data
+
+```{r}
+yeast <- read_table(
+  "https://www4.stat.ncsu.edu/~online/datasets/yeast.data",
+  col_names = c(
+    "Sequence_Name", "mcg", "gvh", "alm",
+    "mit", "erl", "pox", "vac", "nuc", "Class"
+  )
+)
+yeast
+
+```
+
+# Task 3: Combining Excel and Delimited Data
+
+## Question 3
+
+```{r}
+library(readxl)
+
+white_wine <- read_excel("white-wine.xlsx", sheet = 1)
+white_wine
+```
+
+## Question 4
+
+```{r}
+wine_names <- read_excel("white-wine.xlsx", sheet = 2)
+wine_names
+
+colnames(white_wine) <- wine_names[[1]]
+#[[1]] to simplify down to a list of wine names' values, then assign these values as a column names to white wine.
+#colnames(white_wine) — this is a call to the colnames() accessor (accessing data in an object, usually an attribute of that object), retrieving (or here, setting) the column name attribute of white_wine.
+white_wine
+```
+
+## Question 5
+
+```{r}
+white_wine$type <- "white"
+white_wine
+
+#white_wine <- white_wine |>
+#mutate(type = "white")
+```
+
+## Question 6
+
+```{r}
+red_wine <- read_delim(
+  "https://www4.stat.ncsu.edu/~online/datasets/red-wine.csv",
+  delim = ";"
+)
+red_wine
+
+colnames(red_wine) <- wine_names[[1]]
+red_wine$type = "red"
+
+#red_wine <- red_wine |>
+#mutate(type = "red")
+
+red_wine
+```
+
+## Question 7
+
+```{r}
+#wine_data <- dplyr::bind_rows(white_wine, red_wine)
+wine_data <- bind_rows(white_wine, red_wine) #append two datasets by column (they have the exact same columns)
+wine_data
+```
+
+# Task 4: Writing a Function
+
+## Question 8
+
+```{r}
+getIQR <- function(x, ...) {
+  q <- quantile(x, probs = c(0.25, 0.75), ...)
+  unname(q[2] - q[1])
+}
+help(quantile)
+
+#... — this is R's mechanism for passing additional arguments through to a function, and in a documentation signature like this, it's a placeholder standing in for the other named arguments the real function accepts, such as:
+
+#na.rm — whether to strip NA values before computing (default FALSE)
+#names — whether to label the output with "25%", "75%" etc. (default TRUE)
+#type — which of nine quantile-estimation algorithms to use (default 7)
+
+#q[2] - q[1] subtracts Q1 from Q3, giving the interquartile range. But because q has names ("25%", "75%"), the subtraction keeps a name attached to the result — specifically it inherits the name from the first operand, q[2]
+
+#unname() strips that name attribute off, leaving a clean, unlabeled numeric value.
+```
+
+## Question 9
+
+```{r}
+getIQR(wine_data$fixed_acidity)
+getIQR(wine_data$citric_acid)
+```
+
+## Question 10
+
+```{r}
+getCoefVar <- function(x, ...) {
+  sd(x, ...) / abs(mean(x, ...))
+}
+```
+
+## Question 11
+
+```{r}
+getCoefVar(wine_data$fixed_acidity)
+getCoefVar(wine_data$citric_acid)
+```
+
+## Question 12
+
+I created the wrapper function getSummaries() to return both the IQR and coefficient of variation. Instead of repeating the calculations, the function calls the two functions created above.
+
+```{r}
+getSummaries <- function(x, ...) {
+  c(
+    IQR = getIQR(x, ...),
+    CoefVar = getCoefVar(x, ...)
+   )
+}
+
+
+getSummaries <- function(x, ...) {
+  c(IQR = getIQR(x, ...), CoefVar = getCoefVar(x, ...))}
+```
+
+## Question 13
+
+```{r}
+getSummaries(wine_data$fixed_acidity)
+getSummaries(wine_data$citric_acid)
+```
+
+## Question 14
+
+I created the infix function %c% as an alternative way to call cbind(). I first tested it on the two data frames and then tested it on both data frames and the vector.
+
+```{r}
+`%cbind%` <- function(x, y) {
+  cbind(x, y) 
+}
+#cbind() combines objects by binding them as columns, producing a matrix (or data frame, depending on the inputs).
+
+df1 <- data.frame(unif = runif(10), norm = rnorm(10))
+df2 <- data.frame(gamma = rgamma(10, shape = 1), beta = rbeta(10, shape1 = 5, shape2 = 1))
+vec1 <- rnorm(10, mean = 10)
+
+df1
+df2
+vec1
+
+df1 %cbind% df2
+df1 %cbind% df2 %cbind% vec1
 
 ```
